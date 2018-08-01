@@ -1,13 +1,16 @@
+import Phaser from "./phaser-module.js";
+import OverheadMapScene from "./overhead-map-scene.js";
+import EncounterScene from "./encounter-scene.js";
 
-Phaser3RPG.PreloaderScene = new Phaser.Class({
-    Extends: Phaser.Scene,
+export let LoadedMaps = new Map();
 
-    initialize: function () {
+export default class PreloaderScene extends Phaser.Scene {
+    constructor() {
         "use strict";
-        Phaser.Scene.call(this, { key: 'PreloaderScene' });
-    },
+        super({ key: 'PreloaderScene' });
+    }
 
-    preload: function () {
+    preload() {
         "use strict";
         this.sys.canvas.style.display = "block";
         this.sys.canvas.style.marginLeft = "auto";
@@ -19,9 +22,9 @@ Phaser3RPG.PreloaderScene = new Phaser.Class({
 
         this.load.image('loader-image', 'src/img/loader.png');
         this.load.once('filecomplete', this.fullLoad, this);
-    },
+    }
 
-    fullLoad: function () {
+    fullLoad() {
         "use strict";
         // show the loading splash screen
         var loadingScreen = this.add.image(0, 0, 'loader-image');
@@ -38,7 +41,8 @@ Phaser3RPG.PreloaderScene = new Phaser.Class({
         this.load.image('minus-two', 'src/img/minus-two.png');
         this.load.image('minus-three', 'src/img/minus-three.png');
         this.load.image('player-battle-menu', 'src/img/player-battle-menu.png');
-        this.load.spritesheet('symbols', 'src/img/symbols.png', {frameWidth: 5, frameHeight: 6});
+        //this.load.spritesheet('symbols', 'src/img/symbols.png', {frameWidth: 5, frameHeight: 6});
+        this.load.image('symbols', 'src/img/symbols.png');
 
         // maps
         var mapId = 1;
@@ -69,23 +73,31 @@ Phaser3RPG.PreloaderScene = new Phaser.Class({
             'src/audio/foo.ogg',
             'src/audio/foo.mp3'
         ]);
-    },
+    }
 
-    preloadLevel: function (mapId, key, file) {
-        if (!Phaser3RPG.loadedMaps) {
-            Phaser3RPG.loadedMaps = new Map();
-        }
+    preloadLevel(mapId, key, file) {
+        "use strict";
         this.load.tilemapTiledJSON(key, file);
-        Phaser3RPG.loadedMaps.set(mapId, key);
-    },
+        LoadedMaps.set(mapId, key);
+    }
 
-    create: function () {
-        this.scene.add('OverheadMapScene', Phaser3RPG.OverheadMapScene);
-        this.scene.add('EncounterScene', Phaser3RPG.EncounterScene);
+    create() {
+        "use strict";
+        this.cache.bitmapFont.add('basic-font', Phaser.GameObjects.RetroFont.Parse(this, {
+            image: 'symbols',
+            chars: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>-+',
+            width: 5,
+            height: 6,
+            charsPerRow: 10,
+            spacing: {x: 1, y: 1},
+        }));
+
+        this.scene.add('OverheadMapScene', OverheadMapScene);
+        this.scene.add('EncounterScene', EncounterScene);
 
         this.registry.set('player-health', 20);
 
         console.log('starting overhead map scene');
         this.scene.start("OverheadMapScene");
-    },
-});
+    }
+}

@@ -1,28 +1,28 @@
+import Phaser from "./phaser-module.js";
+import constants from "./constants.js";
 
-Phaser3RPG.MapCharacter = new Phaser.Class({
-    Extends: Phaser.GameObjects.Sprite,
-
-    initialize: function (scene, spritesheet, x, y) {
+export default class MapCharacter extends Phaser.GameObjects.Sprite {
+    constructor(scene, spritesheet, x, y) {
         "use strict";
-        Phaser.GameObjects.Sprite.call(this, scene, 0, 0, spritesheet, 0);
+        super(scene, 0, 0, spritesheet, 0);
         this.create(x, y);
-    },
+    }
 
-    create: function (tileX, tileY) {
+    create(tileX, tileY) {
         "use strict";
         this.depth = 20;
 
         this.isSolid = true;
 
         this.tilePosition = new Phaser.Geom.Point(tileX, tileY);
-        this.setPosition((this.tilePosition.x * Phaser3RPG.TILE_SIZE) + Phaser3RPG.TILE_SIZE/2, (this.tilePosition.y * Phaser3RPG.TILE_SIZE) + Phaser3RPG.TILE_SIZE/2);
+        this.setPosition((this.tilePosition.x * constants.TILE_SIZE) + constants.TILE_SIZE/2, (this.tilePosition.y * constants.TILE_SIZE) + constants.TILE_SIZE/2);
 
         // state stuff
         this.state = "stationary";
         this.stateData = {};
 
         // Constants
-        this.WALK_SPEED = 0.07;
+        this.WALK_SPEED = 0.12;
 
         // SFX
         this.buzzSfx = this.scene.sound.add('remove');
@@ -33,14 +33,14 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
         // stub
         this.scene.input.keyboard.on('keydown_Z', function (e) { if (e.repeat) { return; } }, this);
 
-        this.scene.events.on('update', this.update, this);
-    },
+        //this.scene.events.on('update', this.update, this);
+    }
 
-    sideIsSolid: function (side) {
+    sideIsSolid(side) {
         return true;
-    },
+    }
 
-    setState: function (stateName, data) {
+    setState(stateName, data) {
         "use strict";
         this.state = stateName;
         if (!data) {
@@ -52,15 +52,15 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
                     progress: 0,
                     walkDir: data.direction,
                     walkAxis: data.axis,
-                    targetPos: this[data.axis] + (Phaser3RPG.TILE_SIZE * data.direction),
+                    targetPos: this[data.axis] + (constants.TILE_SIZE * data.direction),
                 };
                 break;
             default:
                 this.stateData = {};
         }
         this.onStateChange();
-    },
-    onStateChange: function () {
+    }
+    onStateChange() {
         "use strict";
         if (this.state === "stationary") {
             var tileHere = this.getTileNextTo(0, 0);
@@ -76,8 +76,8 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
         } else if (this.state === "walking") {
             this.faceDirection(this.stateData.walkDir, this.stateData.walkAxis);
         }
-    },
-    update: function (time, delta) {
+    }
+    update(time, delta) {
         "use strict";
         if (!this.scene) {
             return; // why is it calling update after it removes the scene while it's restarting?
@@ -102,11 +102,11 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
         if (tileHere === 7 || fgTileHere === 7) { // red lines tile
             // nothing
         }
-    },
+    }
 
     // direction = positive or negative
     // axis = walking horizontally (x) or vertically (y)
-    startWalk: function (direction, axis) {
+    startWalk(direction, axis) {
         "use strict";
         if (this.state !== "stationary") {
             return false;
@@ -117,11 +117,11 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
         } else {
             this.faceDirection(direction, axis);
         }
-    },
+    }
 
     // direction = positive or negative
     // axis = walking horizontally (x) or vertically (y)
-    canMove: function (direction, axis) {
+    canMove(direction, axis) {
         "use strict";
         if (this.state !== "stationary") {
             return false;
@@ -132,9 +132,9 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
         var checkY = axis === 'y' ? direction : 0;
 
         return !this.getCollisionNextTo(checkX, checkY, null, "walk");
-    },
+    }
     
-    faceDirection: function (direction, axis) {
+    faceDirection(direction, axis) {
         if (direction === 1) {
             if (axis === 'x') {
                 this.setFrame(0);
@@ -148,30 +148,30 @@ Phaser3RPG.MapCharacter = new Phaser.Class({
                 this.setFrame(3);
             }
         }
-    },
+    }
 
-    updateTilePosition: function () {
+    updateTilePosition() {
         "use strict";
         this.tilePosition = this.scene.getTilePosFromWorldPos(this.x, this.y);
-    },
-    getCollisionNextTo: function (xDelta, yDelta, side, type) {
+    }
+    getCollisionNextTo(xDelta, yDelta, side, type) {
         "use strict";
         return this.scene.collisionCheckIncludingEntities(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta, side, type);
-    },
-    getFGTileNextTo: function (xDelta, yDelta) {
+    }
+    getFGTileNextTo(xDelta, yDelta) {
         "use strict";
         return this.scene.getForegroundTileAt(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta);
-    },
-    getTileNextTo: function (xDelta, yDelta) {
+    }
+    getTileNextTo(xDelta, yDelta) {
         "use strict";
         if (this.tilePosition.x !== 0 && !this.tilePosition.x) {
             console.log(this.tilePosition);
         }
         return this.scene.getCollisionTileAt(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta);
-    },
+    }
 
-    die: function () {
+    die() {
         this.scene.events.off('update', this.update);
         this.destroy();
-    },
-});
+    }
+}

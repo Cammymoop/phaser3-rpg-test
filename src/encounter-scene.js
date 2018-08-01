@@ -1,13 +1,13 @@
+import Phaser from "./phaser-module.js";
 
-Phaser3RPG.EncounterScene = new Phaser.Class({
-    Extends: Phaser.Scene,
-
-    initialize: function () {
+export default class EncounterScene extends Phaser.Scene {
+    constructor() {
         "use strict";
-        Phaser.Scene.call(this, { key: 'EncounterScene' });
-    },
+        super({ key: 'EncounterScene' });
+    }
 
-    create: function (data) {
+    create(data) {
+        "use strict";
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
@@ -22,15 +22,14 @@ Phaser3RPG.EncounterScene = new Phaser.Class({
             {x: 140, y: 56},
             {x: 140, y: 66},
         ];
-        this.menuCursor = this.add.sprite(this.menuPositions[0].x, this.menuPositions[0].y, 'symbols', 10).setOrigin(0);
+        //this.menuCursor = this.add.sprite(this.menuPositions[0].x, this.menuPositions[0].y, 'symbols', 10).setOrigin(0);
+        this.menuCursor = this.makeText(this.menuPositions[0].x, this.menuPositions[0].y, '>', 'red');
         this.menuCursor.menuPosition = 0;
         this.menuCursor.depth = 10;
 
         this.playerMenuActive = true;
 
-        this.playerHealthX = 164;
-        this.playerHealthY = 30;
-        this.healthNumerals = [];
+        this.playerHealthDisplay = this.makeText(164, 30, '');
 
         this.enemies = [];
         if (data.hasOwnProperty('enemies')) {
@@ -82,20 +81,11 @@ Phaser3RPG.EncounterScene = new Phaser.Class({
                 return;
             }
             if (this.menuCursor.menuPosition === 0) { // ATTACK
-                this.playerMenuActive = false;
-                this.playerMenu.visible = false;
-                this.menuCursor.visible = false;
-                let target = this.enemies[0];
-                target.health -= 2;
-                let minus = this.add.image(target.getCenter().x, target.getCenter().y - target.height/2 - 7, 'minus-two');
-                this.time.addEvent({delay: 500, callback: (() => minus.destroy()) });
-
-                this.time.addEvent({delay: 1900, callback: this.takeEnemyTurn, callbackScope: this});
+                this.enemies[0].health -= 2;
+                this.showDamage(this.enemies[0], 2);
+                this.endPlayerTurn();
             } else if (this.menuCursor.menuPosition === 1) { // MAGIC
-                this.playerMenuActive = false;
-                this.playerMenu.visible = false;
-                this.menuCursor.visible = false;
-                this.time.addEvent({delay: 1900, callback: this.takeEnemyTurn, callbackScope: this});
+                this.endPlayerTurn();
             } else if (this.menuCursor.menuPosition === 2) { // RUN
                 this.leaveEncounter();
             }
@@ -105,46 +95,66 @@ Phaser3RPG.EncounterScene = new Phaser.Class({
             this.leaveEncounter();
         }, this);
         console.log("encounter started");
-    },
+    }
 
-    update: function () {
-        let playerHealthString = this.registry.get('player-health') + '';
-        for (let i = 0; i < 6; i++) {
-            if (i < playerHealthString.length) {
-                if (!this.healthNumerals[i]) {
-                    this.healthNumerals[i] = this.add.sprite(this.playerHealthX + (i * 6), this.playerHealthY, 'symbols', Number.parseInt(playerHealthString[i])).setOrigin(0);
-                } else {
-                    this.healthNumerals[i].setFrame(Number.parseInt(playerHealthString[i]));
-                }
-            } else if (i < this.healthNumerals.length) {
-                this.healthNumerals[i].destroy();
-            }
+    makeText(x, y, text, tint) {
+        "use strict";
+        let textObject = this.add.bitmapText(x, y, 'basic-font', text).setOrigin(0).setLetterSpacing(1);
+        if (tint === "red") {
+            textObject.setTintFill(0xff004d);
         }
-        this.healthNumerals.length = playerHealthString.length; // truncate
-    },
+        return textObject;
+    }
 
-    takeEnemyTurn: function () {
+    showDamage(target, damage) {
+        "use strict";
+        this.damageAnimation(target);
+        let text = this.makeText(target.getCenter().x, target.getBounds().top - 4, '-' + damage, 'red').setOrigin(0.5, 1);
+        this.time.addEvent({delay: 500, callback: (() => text.destroy()) });
+    }
+
+    damageAnimation(target) {
+        "use strict";
+        target.setTintFill(0xfff1e8);
+        this.time.addEvent({delay: 70, callback: (() => target.clearTint()) });
+    }
+
+    update() {
+        "use strict";
+        let playerHealthString = this.registry.get('player-health') + '';
+        this.playerHealthDisplay.text = this.registry.get('player-health');
+    }
+
+    takeEnemyTurn() {
+        "use strict";
         this.damagePlayer(3);
-        let target = this.player;
-        let minus = this.add.image(target.getCenter().x, target.getCenter().y - target.height/2 - 7, 'minus-three');
-        this.time.addEvent({delay: 500, callback: (() => minus.destroy()) });
+        this.showDamage(this.player, 3);
 
         this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
-    },
+    }
 
-    playerTurn: function () {
+    playerTurn() {
+        "use strict";
         this.playerMenu.visible = true;
         if (this.registry.get('player-health') <= 0) {
-            return; // only show the menu if you're dead
+            return; // show only the menu if you're dead
         }
         this.menuCursor.visible = true;
         this.playerMenuActive = true;
 
         this.menuCursor.menuPosition = 0;
         this.menuCursor.setPosition(this.menuPositions[0].x, this.menuPositions[0].y);
-    },
+    }
 
-    damagePlayer: function (damage) {
+    endPlayerTurn() {
+        this.playerMenuActive = false;
+        this.playerMenu.visible = false;
+        this.menuCursor.visible = false;
+
+        this.time.addEvent({delay: 1900, callback: this.takeEnemyTurn, callbackScope: this});
+    }
+
+    damagePlayer(damage) {
         this.registry.set('player-health', this.registry.get('player-health') - damage);
         if (this.registry.get('player-health') < 0) {
             this.registry.set('player-health', 0);
@@ -158,9 +168,9 @@ Phaser3RPG.EncounterScene = new Phaser.Class({
                 this.time.addEvent({delay: 1200, callback: this.gameOver, callbackScope: this});
             }, callbackScope: this});
         }
-    },
+    }
 
-    gameOver: function () {
+    gameOver() {
         let gameOverSplash = this.add.image(0, 0, 'game-over').setOrigin(0);
         gameOverSplash.depth = 9001;
         this.time.addEvent({delay: 3200, callback: function () {
@@ -169,12 +179,11 @@ Phaser3RPG.EncounterScene = new Phaser.Class({
             this.scene.stop();
             this.scene.start("OverheadMapScene");
         }, callbackScope: this});
-    },
+    }
 
-    leaveEncounter: function () {
+    leaveEncounter() {
         console.log("encounter finished");
         this.scene.stop();
-        this.scene.resume("OverheadMapScene");
-        this.scene.bringToTop("OverheadMapScene");
-    },
-});
+        this.scene.get("OverheadMapScene").resume();
+    }
+}

@@ -3,21 +3,21 @@
     <head>
         <meta charset="UTF-8" />
         <title>Phaser 3 playing around</title>
-        <script type="text/javascript">
-            // Namespace that all game code uses
-            var Phaser3RPG = {};
-        </script>
         <script src="lib/phaser.min.js"></script>
+        <script src="src/main.js" type="module"></script>
+        <!--
         <script src="src/gamescene.js"></script>
         <script src="src/preloader-scene.js"></script>
         <script src="src/overhead-map-scene.js"></script>
         <script src="src/encounter-scene.js"></script>
         <script src="src/map-character.js"></script>
         <script src="src/tile-entity.js"></script>
+        -->
     </head>
     <body style="background-color:#2789cd; background-image:url('src/img/wave_only.png')">
         <div id="gameContainer" style="vertical-align:bottom;"></div>
 
+        <!--
         <script type="text/javascript">
             window.onload = function() {
                 var config = {
@@ -27,7 +27,10 @@
                     pixelArt: true,
                     zoom: 1,
                     parent: 'gameContainer',
-                    scene: Phaser3RPG.PreloaderScene
+                    scene: Phaser3RPG.PreloaderScene,
+                    plugins: {
+                        global: [{ key: 'NinePatchPlugin', plugin: NinePatchPlugin, start: true }],
+                    },
                 };
                 window.gameInstance = new Phaser.Game(config);
             };
@@ -45,5 +48,6 @@
             function controls() {
             }
         </script>
+        -->
     </body>
 </html>

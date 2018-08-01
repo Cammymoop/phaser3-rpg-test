@@ -1,19 +1,19 @@
+import Phaser from "./phaser-module.js";
+import constants from "./constants.js";
 
-Phaser3RPG.TileEntity = new Phaser.Class({
-    Extends: Phaser.GameObjects.Sprite,
-
-    initialize: function (scene, x, y, tileIndex, orientation) {
+export default class TileEntity extends Phaser.GameObjects.Sprite {
+    constructor(scene, x, y, tileIndex, orientation) {
         "use strict";
-        Phaser.GameObjects.Sprite.call(this, scene, 0, 0, 'tiles', tileIndex - 1);
+        super(scene, 0, 0, 'tiles', tileIndex - 1);
         this.entityInit(x, y, tileIndex, orientation);
-    },
+    }
 
-    entityInit: function (tileX, tileY, tileIndex, orientation) {
+    entityInit(tileX, tileY, tileIndex, orientation) {
         "use strict";
         this.depth = -10;
 
         this.tilePosition = new Phaser.Geom.Point(tileX, tileY);
-        this.setPosition((this.tilePosition.x * Phaser3RPG.TILE_SIZE) + Phaser3RPG.TILE_SIZE/2, (this.tilePosition.y * Phaser3RPG.TILE_SIZE) + Phaser3RPG.TILE_SIZE/2);
+        this.setPosition((this.tilePosition.x * constants.TILE_SIZE) + constants.TILE_SIZE/2, (this.tilePosition.y * constants.TILE_SIZE) + constants.TILE_SIZE/2);
 
         this.isSolid = true;
         this.collisionBox = new Phaser.Geom.Rectangle(this.x + this.width/2, this.y + this.height/2, this.width, this.height);
@@ -64,9 +64,9 @@ Phaser3RPG.TileEntity = new Phaser.Class({
                     return true;
                 }
                 if (this.orientation === 0 || this.orientation === 2){
-                    return side === Phaser3RPG.TOP_SIDE || side === Phaser3RPG.BOTTOM_SIDE;
+                    return side === constants.TOP_SIDE || side === constants.BOTTOM_SIDE;
                 } else {
-                    return side === Phaser3RPG.LEFT_SIDE || side === Phaser3RPG.RIGHT_SIDE;
+                    return side === constants.LEFT_SIDE || side === constants.RIGHT_SIDE;
                 }
             };
         }
@@ -83,41 +83,41 @@ Phaser3RPG.TileEntity = new Phaser.Class({
 
         this.scene.events.on('update', this.update, this);
         this.scene.add.existing(this);
-    },
+    }
 
-    sideIsSolid: function (side) {
+    sideIsSolid(side) {
         return true;
-    },
+    }
 
-    onProjectileHit: function (side) { // stub
+    onProjectileHit(side) { // stub
         return;
-    },
+    }
 
-    intersects: function (x, y) {
+    intersects(x, y) {
         return Phaser.Geom.Rectangle.CenterOn(this.collisionBox, this.x + this.collisionOffset.x, this.y + this.collisionOffset.y).contains(x, y);
-    },
+    }
 
-    setState: function (stateName, data) {
+    setState(stateName, data) {
         "use strict";
         this.state = stateName;
         switch (stateName) {
             case "falling":
                 this.stateData = {
-                    nextCheckY: this.y + Phaser3RPG.TILE_SIZE,
+                    nextCheckY: this.y + constants.TILE_SIZE,
                 };
                 break;
             default:
                 this.stateData = {};
         }
         this.onStateChange();
-    },
-    onStateChange: function () {
+    }
+    onStateChange() {
         "use strict";
         if (this.state === "stationary") {
             // nothing here
         }
-    },
-    update: function (time, delta) {
+    }
+    update(time, delta) {
         "use strict";
         if (!this.scene) {
             return; // why is it calling update after it removes the scene while it's restarting?
@@ -135,19 +135,19 @@ Phaser3RPG.TileEntity = new Phaser.Class({
             this.y += this.FALL_SPEED * delta;
             this.updateTilePosition();
             if (this.y >= sd.nextCheckY) {
-                var tileUnder = this.getCollisionNextTo(0, 1, Phaser3RPG.TOP_SIDE);
+                var tileUnder = this.getCollisionNextTo(0, 1, constants.TOP_SIDE);
                 if (tileUnder) {
                     this.y = sd.nextCheckY;
                     this.setState("stationary");
                 } else {
                     // Continue falling
-                    sd.nextCheckY += Phaser3RPG.TILE_SIZE;
+                    sd.nextCheckY += constants.TILE_SIZE;
                 }
             }
         }
-    },
+    }
 
-    canMove: function (direction, axis) {
+    canMove(direction, axis) {
         "use strict";
         if (this.state !== "stationary") {
             return false;
@@ -157,23 +157,23 @@ Phaser3RPG.TileEntity = new Phaser.Class({
         var checkX = axis === 'x' ? direction : 0;
         var checkY = axis === 'y' ? direction : 0;
         return !this.getCollisionNextTo(checkX, checkY);
-    },
+    }
 
-    updateTilePosition: function () {
+    updateTilePosition() {
         "use strict";
         this.tilePosition = this.scene.getTilePosFromWorldPos(this.x, this.y);
-    },
-    getCollisionNextTo: function (xDelta, yDelta, side) {
+    }
+    getCollisionNextTo(xDelta, yDelta, side) {
         "use strict";
         return this.scene.collisionCheckIncludingEntities(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta, side);
-    },
-    getTileNextTo: function (xDelta, yDelta) {
+    }
+    getTileNextTo(xDelta, yDelta) {
         "use strict";
         return this.scene.getCollisionTileAt(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta);
-    },
+    }
 
-    die: function () {
+    die() {
         this.scene.events.off('update', this.update);
         this.destroy();
-    },
-});
+    }
+}
