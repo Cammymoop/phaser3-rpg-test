@@ -1,6 +1,10 @@
 import Phaser from "./phaser-module.js";
 import constants from "./constants.js";
 
+import UIBox from "./ui-box.js";
+import UIText from "./ui-text.js";
+import UIVerticalMenu from "./ui-vertical-menu.js";
+
 import Character from "./character.js";
 
 export default class EncounterScene extends Phaser.Scene {
@@ -12,42 +16,32 @@ export default class EncounterScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
-        let background = this.add.image(0, 0, 'encounter-background').setOrigin(0);
-        this.cameras.main.centerOn(background.getCenter().x, background.getCenter().y);
-
-        this.playerMenu = this.add.image(0, 0, 'player-battle-menu').setOrigin(0);
-        this.playerMenu.depth = 10;
+        this.background = this.add.image(0, 0, 'encounter-background').setOrigin(0);
+        this.cameras.main.centerOn(this.background.getCenter().x, this.background.getCenter().y);
 
         this.queuedEvents = [];
         this.await = 0;
 
         this.player = this.registry.get('player-character');
 
-        this.menuPositions = [
-            {x: 140, y: 46, text: "ATTACK"},
-            {x: 140, y: 56, text: "MAGIC"},
-            {x: 140, y: 66, text: "RUN"},
-        ];
-        this.menuText = [];
-        for (let mi of this.menuPositions) {
-            this.menuText.push(this.makeText(mi.x + 6, mi.y, mi.text));
-        }
-        //this.menuCursor = this.add.sprite(this.menuPositions[0].x, this.menuPositions[0].y, 'symbols', 10).setOrigin(0);
-        this.menuCursor = this.makeText(this.menuPositions[0].x, this.menuPositions[0].y, '>', 'red');
-        this.menuCursor.menuPosition = 0;
-        this.menuCursor.depth = 10;
+        let menuX = 132;
+        let menuY = 40;
+
+        let menuItems = ["attack", "item", "run"];
+        this.actionMenu = new UIVerticalMenu(this, menuX, menuY, menuItems, 15);
+        this.activeMenu = this.actionMenu;
 
         this.playerMenuActive = true;
+        this.actionMenu.showCursor();
 
-        this.playerHealthDisplay = this.makeText(146, 30, 'HP-');
+        this.playerHealthDisplay = new UIText(this, menuX + 6, menuY - 9, 'HP-', null, 20);
 
         this.enemies = [];
         if (data.hasOwnProperty('enemies')) {
             for (let enemy of data.enemies) {
                 if (enemy.type === "rat") {
                     for (let i = 0; i < enemy.quantity; i++) {
-                        console.log("spawning rat: " + (12 + (i * 6)) + ", " + (118 - (i * 6)));
-                        var spr = this.add.sprite(12 + (i * 6), 118 - (i * 6), 'rat', 0);
+                        var spr = this.add.sprite(12 + (i * 22), 118 - (i * 6), 'rat', 0);
                         spr.depth = 20 - i;
                         spr.setOrigin(0, 1);
                         spr.health = 10;
@@ -62,43 +56,81 @@ export default class EncounterScene extends Phaser.Scene {
         this.playerSprite.depth = 20;
 
         this.input.keyboard.on("keydown_DOWN", function () {
-            if (!this.playerMenuActive) {
+            if (!this.activeMenu) {
                 return;
             }
-            let newPos = this.menuCursor.menuPosition + 1;
-            if (newPos > this.menuPositions.length - 1) {
-                newPos = 0;
-            }
-            this.menuCursor.setPosition(this.menuPositions[newPos].x, this.menuPositions[newPos].y);
-            this.menuCursor.menuPosition = newPos;
+            this.activeMenu.moveCursor(true);
         }, this);
 
         this.input.keyboard.on("keydown_UP", function () {
-            if (!this.playerMenuActive) {
+            if (!this.activeMenu) {
                 return;
             }
-            let newPos = this.menuCursor.menuPosition - 1;
-            if (newPos < 0) {
-                newPos = this.menuPositions.length - 1;
-            }
-            this.menuCursor.setPosition(this.menuPositions[newPos].x, this.menuPositions[newPos].y);
-            this.menuCursor.menuPosition = newPos;
+            this.activeMenu.moveCursor(false);
         }, this);
 
         // select menu option
         this.input.keyboard.on("keydown_SPACE", function () {
-            if (!this.playerMenuActive) {
+            if (!this.activeMenu) {
                 return;
             }
-            if (this.menuCursor.menuPosition === 0) { // ATTACK
-                this.attackEnemy(this.enemies[0], this.player.getStandardAttackDamage());
-                this.endPlayerTurn();
-            } else if (this.menuCursor.menuPosition === 1) { // MAGIC
-                this.endPlayerTurn();
-            } else if (this.menuCursor.menuPosition === 2) { // RUN
-                this.leaveEncounter();
+            if (this.activeMenu === this.actionMenu) {
+                if (this.actionMenu.getCursorIndex() === 0) { // ATTACK
+                    this.attackEnemy(this.enemies[0], this.player.getStandardAttackDamage());
+                    this.endPlayerTurn();
+                } else if (this.actionMenu.getCursorIndex() === 1) { // ITEM
+                    this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
+                    this.activeMenu.menuType = "items menu";
+                } else if (this.actionMenu.getCursorIndex() === 2) { // RUN
+                    this.leaveEncounter();
+                }
+            } else if (this.activeMenu.menuType === "items menu") {
+                let itemIndex = this.activeMenu.getCursorIndex();
+                if (this.activeMenu.getMenuItemText(itemIndex).toLowerCase() !== "cancel") {
+                    let item = this.player.getInventoryItem(itemIndex);
+                    let actions = ['drop', 'cancel'];
+                    if (item.usable) {
+                        actions.unshift('use');
+                    }
+                    if (item.equipable) {
+                        actions.unshift((this.player.isEquiped(itemIndex) ? 'un' : '') + 'equip');
+                    }
+                    this.makeSubMenu(actions);
+                    this.activeMenu.menuType = "item use menu";
+                } else {
+                    this.setActiveMenu(this.activeMenu.prevMenu);
+                }
+            } else if (this.activeMenu.menuType === "item use menu") {
+                let action = this.activeMenu.getMenuItemText(this.activeMenu.getCursorIndex()).toLowerCase();
+                this.setActiveMenu(this.activeMenu.prevMenu); // return to item list menu
+                let itemIndex = this.activeMenu.getCursorIndex();
+                let modified = false;
+                if (action === 'equip' || action === 'unequip') {
+                    this.player.toggleEquipItem(itemIndex);
+                    modified = true;
+                } else if (action === 'drop') {
+                    this.player.dropInventoryItem(itemIndex);
+                    modified = true;
+                }
+                if (modified) {
+                    // regenerate item list menu
+                    this.setActiveMenu(this.activeMenu.prevMenu);
+                    this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
+                    this.activeMenu.menuType = "items menu";
+                }
+            } else if (this.activeMenu.temporary) {
+                this.setActiveMenu(this.activeMenu.prevMenu);
             }
         }, this);
+
+        this.input.keyboard.on("keydown_ESC", function () {
+            if (!this.activeMenu) {
+                return;
+            }
+            if (this.activeMenu.temporary) {
+                this.setActiveMenu(this.activeMenu.prevMenu);
+            }
+        });
 
         this.input.keyboard.on("keydown_ZERO", function () {
             this.leaveEncounter();
@@ -176,21 +208,9 @@ export default class EncounterScene extends Phaser.Scene {
         this.queuedEvents.push(callback);
     }
 
-    makeText(x, y, text, tint) {
-        text = text.toUpperCase();
-        let textObject = this.add.bitmapText(x, y, 'basic-font', text).setOrigin(0).setLetterSpacing(1);
-        textObject.depth = 200;
-        if (tint === "red") {
-            textObject.setTintFill(constants.colors.RED);
-        } else if (tint === "green") {
-            textObject.setTintFill(constants.colors.GREEN);
-        }
-        return textObject;
-    }
-
     showDamage(target, damage) {
         this.damageAnimation(target);
-        let text = this.makeText(target.getCenter().x, target.getBounds().top + 3, '-' + damage, 'red').setOrigin(0.5, 1);
+        let text = new UIText(this, target.getCenter().x, target.getBounds().top + 3, '-' + damage, 'red').setOrigin(0.5, 1);
         this.tweens.add({
             targets: text,
             y: text.y - 8, // tween this
@@ -213,29 +233,51 @@ export default class EncounterScene extends Phaser.Scene {
         this.queueEvent(() => this.playerTurn());
     }
 
-    setPlayerMenuVisible(visibility) {
-        for (let mt of this.menuText) {
-            mt.visible = visibility;
+    setActiveMenu(menu, leaveOpen) {
+        if (this.activeMenu) {
+            if (this.activeMenu.temporary && !leaveOpen) {
+                this.activeMenu.destroy();
+            } else if (!leaveOpen) {
+                this.activeMenu.hideCursor();
+            }
         }
-        this.playerMenu.visible = visibility;
+        this.activeMenu = menu;
+        if (this.activeMenu) {
+            this.activeMenu.showCursor();
+        }
+    }
+
+    closeSubMenu() {
+        this.setActiveMenu(this.activeMenu.prevMenu);
+    }
+
+    makeSubMenu(list) {
+        let parentMenu = this.activeMenu;
+        let subMenuX = parentMenu.x + 4;
+        let subMenuY = parentMenu.y + 4 + (parentMenu.getCursorIndex() * 10);
+
+        this.setActiveMenu(new UIVerticalMenu(this, subMenuX, subMenuY, list, parentMenu.depth + 5), true);
+        let right = this.activeMenu.x + this.activeMenu.width;
+        if (right > this.background.getBounds().right - 1) {
+            this.activeMenu.moveMenu(this.background.getBounds().right - 1 - right, 0);
+        }
+        this.activeMenu.temporary = true;
+        this.activeMenu.prevMenu = parentMenu;
     }
 
     playerTurn() {
-        this.setPlayerMenuVisible(true);
+        this.actionMenu.setVisible(true);
         if (!this.player.isAlive()) {
+            this.actionMenu.hideCursor();
             return; // show only the menu if you're dead
         }
-        this.menuCursor.visible = true;
-        this.playerMenuActive = true;
-
-        this.menuCursor.menuPosition = 0;
-        this.menuCursor.setPosition(this.menuPositions[0].x, this.menuPositions[0].y);
+        this.setActiveMenu(this.actionMenu);
+        this.actionMenu.resetCursor();
     }
 
     endPlayerTurn() {
-        this.playerMenuActive = false;
-        this.setPlayerMenuVisible(false);
-        this.menuCursor.visible = false;
+        this.setActiveMenu(false);
+        this.actionMenu.setVisible(false);
 
         this.queueEvent(() => this.time.addEvent({delay: 200, callback: this.takeEnemyTurn, callbackScope: this}));
     }
@@ -243,10 +285,11 @@ export default class EncounterScene extends Phaser.Scene {
     damagePlayer(damage) {
         this.player.damage(damage);
         if (!this.player.isAlive()) {
-            this.playerMenuActive = false;
             this.time.addEvent({delay: 1000, callback: function () {
-                this.playerSprite.y -= this.playerSprite.height;
+                this.playerSprite.y -= this.playerSprite.height - 4;
+                this.playerSprite.x -= 3;
                 this.playerSprite.rotation = (3 * Math.PI)/2;
+                this.playerSprite.setFrame(3);
 
                 this.time.addEvent({delay: 1200, callback: this.gameOver, callbackScope: this});
             }, callbackScope: this});

@@ -78,4 +78,35 @@ export default class Character {
         }
         return damage;
     }
+
+    // Inventory related functions
+    getInventoryList() {
+        return this.inventory.map((item) => { return item.displayName + (this.equippedItem === item ? '*' : ' '); });
+    }
+    getInventoryItem(index) {
+        if (index < 0 || index >= this.inventory.length) {
+            console.log('inventory index out of range');
+            return false;
+        }
+        return this.inventory[index];
+    }
+
+    dropInventoryItem(index) {
+        if (this.isEquiped(index)) {
+            this.equippedItem = false;
+        }
+        this.inventory = this.inventory.filter((_, i) => index !== i);
+    }
+    toggleEquipItem(index) {
+        let item = this.getInventoryItem(index);
+        if (this.equippedItem === item) {
+            this.equippedItem = false;
+        } else {
+            this.equippedItem = item;
+        }
+    }
+
+    isEquiped(index) {
+        return this.getInventoryItem(index) === this.equippedItem;
+    }
 }

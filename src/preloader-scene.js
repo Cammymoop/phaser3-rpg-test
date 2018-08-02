@@ -46,6 +46,9 @@ export default class PreloaderScene extends Phaser.Scene {
         //this.load.spritesheet('symbols', 'img/symbols.png', {frameWidth: 5, frameHeight: 6});
         this.load.image('symbols', 'img/symbols.png');
 
+        // drawing to render textures
+        this.load.image('single-pixel', 'img/single_pixel.png');
+
         // maps
         var mapId = 1;
         this.preloadLevel(mapId++, 'map1', 'map/map1.json');
@@ -91,7 +94,7 @@ export default class PreloaderScene extends Phaser.Scene {
         "use strict";
         this.cache.bitmapFont.add('basic-font', Phaser.GameObjects.RetroFont.Parse(this, {
             image: 'symbols',
-            chars: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>-+',
+            chars: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<>-+* ',
             width: 5,
             height: 6,
             charsPerRow: 10,
