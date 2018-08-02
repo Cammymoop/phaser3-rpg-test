@@ -1,5 +1,6 @@
 import Phaser from "./phaser-module.js";
 import constants from "./constants.js";
+import OverheadMapScene from "./overhead-map-scene.js";
 
 export default class MapCharacter extends Phaser.GameObjects.Sprite {
     constructor(scene, spritesheet, x, y) {
@@ -67,11 +68,10 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
             if (tileHere === 14) {
                 this.scene.goToNextLevel();
             }
-            if (tileHere === 28) { // floor switch
-                this.scene.floorSwitchPress(this.tilePosition.x, this.tilePosition.y);
-            }
-            if (this.tilePosition.x === 14 && this.tilePosition.y === 20) {
-                this.scene.startEncounter();
+            let key = OverheadMapScene.coordinateKey(this.tilePosition);
+            if (this.scene.staticEncounters.has(key)) {
+                this.scene.startEncounter(this.scene.staticEncounters.get(key));
+                console.log(this.scene.staticEncounters.get(key));
             }
         } else if (this.state === "walking") {
             this.faceDirection(this.stateData.walkDir, this.stateData.walkAxis);

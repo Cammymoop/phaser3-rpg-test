@@ -95,8 +95,6 @@ export default class PreloaderScene extends Phaser.Scene {
         this.scene.add('OverheadMapScene', OverheadMapScene);
         this.scene.add('EncounterScene', EncounterScene);
 
-        this.registry.set('player-health', 20);
-
         console.log('starting overhead map scene');
         this.scene.start("OverheadMapScene");
     }

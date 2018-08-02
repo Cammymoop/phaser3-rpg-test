@@ -1,13 +1,12 @@
 import Phaser from "./phaser-module.js";
+import constants from "./constants.js";
 
 export default class EncounterScene extends Phaser.Scene {
     constructor() {
-        "use strict";
         super({ key: 'EncounterScene' });
     }
 
     create(data) {
-        "use strict";
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
@@ -16,6 +15,9 @@ export default class EncounterScene extends Phaser.Scene {
 
         this.playerMenu = this.add.image(0, 0, 'player-battle-menu').setOrigin(0);
         this.playerMenu.depth = 10;
+
+        this.queuedEvents = [];
+        this.await = 0;
 
         this.menuPositions = [
             {x: 140, y: 46},
@@ -81,8 +83,9 @@ export default class EncounterScene extends Phaser.Scene {
                 return;
             }
             if (this.menuCursor.menuPosition === 0) { // ATTACK
-                this.enemies[0].health -= 2;
-                this.showDamage(this.enemies[0], 2);
+                //this.enemies[0].health -= 2;
+                //this.showDamage(this.enemies[0], 2);
+                this.attackEnemy(this.enemies[0], 2);
                 this.endPlayerTurn();
             } else if (this.menuCursor.menuPosition === 1) { // MAGIC
                 this.endPlayerTurn();
@@ -97,44 +100,106 @@ export default class EncounterScene extends Phaser.Scene {
         console.log("encounter started");
     }
 
+    update() {
+        let playerHealthString = this.registry.get('player-health') + '';
+        this.playerHealthDisplay.text = this.registry.get('player-health');
+
+        while (this.await < 1 && this.queuedEvents.length > 0) {
+            if (typeof this.queuedEvents[0] === "function") {
+                this.queuedEvents[0].call();
+            } else {
+                console.log("queued event was not a function");
+            }
+            this.queuedEvents.shift();
+        }
+    }
+
+    addBlockingEvent(delay, callback) {
+        if (typeof callback !== "function") {
+            console.log("tryed to add a blocking event, but it's not callable");
+            return;
+        }
+        this.await++;
+        this.time.addEvent({delay: delay, callback: () => { callback.call(); this.await--; }});
+    }
+
+    attackEnemy(target, damage) {
+        target.health -= damage;
+        this.showDamage(target, damage);
+        if (target.health <= 0) {
+            target.health = 0;
+            this.addBlockingEvent(600, () => this.enemyDeath(target));
+        }
+    }
+
+    enemyDeath(target) {
+        target.setTintFill(constants.colors.DARK_BLUE);
+        this.await++;
+        let cropper = { // object with setter to enable tweening the crop of a sprite
+            cropProgress: 0,
+            set progress(val) { this.cropProgress = val; this.updateCrop(); },
+            get progress() { return this.cropProgress; },
+            updateCrop: function () {
+                // crop off the top ending with no height
+                let height = Math.round(this.target.height - (this.target.height * this.cropProgress));
+                console.log(height);
+                this.target.setCrop(0, this.target.height - height, this.target.width, height);
+            },
+            target: target,
+        };
+        this.tweens.add({
+            targets: cropper,
+            progress: 1, // tween this
+            duration: 1200,
+            delay: 100,
+            onComplete: () => { this.removeEnemy(target); this.await--; },
+        });
+    }
+
+    removeEnemy(target) {
+        this.enemies = this.enemies.filter(function (en) {
+            return en !== target;
+        });
+        target.destroy();
+        console.log(this.enemies.length + ' enemies left');
+        if (this.enemies.length <= 0) {
+            console.log('Encoutner Won');
+            this.addBlockingEvent(2500, () => this.leaveEncounter());
+        }
+    }
+
+    queueEvent(callback) {
+        this.queuedEvents.push(callback);
+    }
+
     makeText(x, y, text, tint) {
-        "use strict";
         let textObject = this.add.bitmapText(x, y, 'basic-font', text).setOrigin(0).setLetterSpacing(1);
         if (tint === "red") {
-            textObject.setTintFill(0xff004d);
+            textObject.setTintFill(constants.colors.RED);
         }
         return textObject;
     }
 
     showDamage(target, damage) {
-        "use strict";
         this.damageAnimation(target);
         let text = this.makeText(target.getCenter().x, target.getBounds().top - 4, '-' + damage, 'red').setOrigin(0.5, 1);
         this.time.addEvent({delay: 500, callback: (() => text.destroy()) });
     }
 
     damageAnimation(target) {
-        "use strict";
-        target.setTintFill(0xfff1e8);
+        target.setTintFill(constants.colors.WHITE);
         this.time.addEvent({delay: 70, callback: (() => target.clearTint()) });
     }
 
-    update() {
-        "use strict";
-        let playerHealthString = this.registry.get('player-health') + '';
-        this.playerHealthDisplay.text = this.registry.get('player-health');
-    }
-
     takeEnemyTurn() {
-        "use strict";
         this.damagePlayer(3);
         this.showDamage(this.player, 3);
 
-        this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
+        //this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
+        this.queueEvent(() => this.playerTurn());
     }
 
     playerTurn() {
-        "use strict";
         this.playerMenu.visible = true;
         if (this.registry.get('player-health') <= 0) {
             return; // show only the menu if you're dead
@@ -151,7 +216,7 @@ export default class EncounterScene extends Phaser.Scene {
         this.playerMenu.visible = false;
         this.menuCursor.visible = false;
 
-        this.time.addEvent({delay: 1900, callback: this.takeEnemyTurn, callbackScope: this});
+        this.queueEvent(() => this.time.addEvent({delay: 200, callback: this.takeEnemyTurn, callbackScope: this}));
     }
 
     damagePlayer(damage) {
@@ -174,7 +239,9 @@ export default class EncounterScene extends Phaser.Scene {
         let gameOverSplash = this.add.image(0, 0, 'game-over').setOrigin(0);
         gameOverSplash.depth = 9001;
         this.time.addEvent({delay: 3200, callback: function () {
-            this.registry.set('player-health', 22);
+            let maxHealth = this.registry.get('player-max-health') + 8;
+            this.registry.set('player-max-health', maxHealth);
+            this.registry.set('player-health', maxHealth);
             this.scene.stop("OverheadMapScene");
             this.scene.stop();
             this.scene.start("OverheadMapScene");

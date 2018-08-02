@@ -15,13 +15,16 @@ export default class OverheadMapScene extends Phaser.Scene {
 
     create(data) {
         "use strict";
-        this.maps = LoadedMaps;
-
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
         if (!this.data.has('mapId')) {
             this.data.set('mapId', 1);
+        }
+
+        if (!this.registry.has('player-health')) {
+            this.registry.set('player-health', 9000);
+            this.registry.set('player-max-health', 9000);
         }
 
         if (!this.registry.has('muted')) {
@@ -63,7 +66,7 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     goToNextLevel() {
-        if (this.maps.has(this.currentMapId + 1)) {
+        if (LoadedMaps.has(this.currentMapId + 1)) {
             this.data.set('mapId', this.currentMapId + 1);
         } else {
             this.data.set('mapId', 1);
@@ -72,7 +75,7 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     loadMap(mapId) {
-        if (!this.maps.has(mapId)) {
+        if (!LoadedMaps.has(mapId)) {
             console.log("that map (" + mapId + ") doesn't exist, maybe");
             return;
         }
@@ -80,7 +83,7 @@ export default class OverheadMapScene extends Phaser.Scene {
         this.currentMapId = mapId;
 
         // the tilemap
-        this.map = this.make.tilemap({key: this.maps.get(mapId)});
+        this.map = this.make.tilemap({key: LoadedMaps.get(mapId)});
         var tiles = this.map.addTilesetImage('tiles', 'tiles_img');
         this.collisionLayer = this.map.createDynamicLayer('Tile Layer 1', tiles, 0, 0);
         this.collisionLayer.depth = 0;
@@ -99,7 +102,6 @@ export default class OverheadMapScene extends Phaser.Scene {
         // lock the camera inside the map
         this.cameras.main.setBounds(0, 0, this.collisionLayer.width, this.collisionLayer.height);
 
-
         // Tile entities
         // spawn entities
         this.tileEntities = [];
@@ -111,6 +113,22 @@ export default class OverheadMapScene extends Phaser.Scene {
                 this.tileEntities.push(te);
                 this.setCollisionTile(tile.x, tile.y, null);
                 tile = this.collisionLayer.findByIndex(i);
+            }
+        }
+
+        this.staticEncounters = new Map();
+        let encounters = this.map.getObjectLayer('encounters');
+        if (encounters) {
+            for (let mapEncounter of encounters.objects) {
+                if (mapEncounter.type !== "static-encounter") {
+                    continue;
+                }
+                let tilePosition = this.getTilePosFromWorldPos(mapEncounter.x, mapEncounter.y);
+                console.log(mapEncounter);
+                this.staticEncounters.set(OverheadMapScene.coordinateKey(tilePosition), {
+                    enemyType: mapEncounter.properties['enemy-type'],
+                    enemyQuantity: mapEncounter.properties['enemy-quantity'],
+                });
             }
         }
 
@@ -127,6 +145,13 @@ export default class OverheadMapScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player, true);
 
         this.levelLoaded = true;
+    }
+
+    static coordinateKey(coordObj) {
+        return OverheadMapScene.coordinateKeyXY(coordObj.x, coordObj.y);
+    }
+    static coordinateKeyXY(x, y) {
+        return x + "|" + y;
     }
 
     update(time, delta) {
@@ -217,7 +242,7 @@ export default class OverheadMapScene extends Phaser.Scene {
     // Do you collide with this tile?
     tileIsSolid(tileIndex, side, collisionType) {
         "use strict";
-        var solidTiles = [5, 7, 9, 10];
+        var solidTiles = [5, 7, 9, 10, 13, 14, 15, 17, 31];
         if (side === constants.TOP_SIDE) {
             //solidTiles.push(13);
         } else if (side === constants.BOTTOM_SIDE) {
@@ -251,18 +276,20 @@ export default class OverheadMapScene extends Phaser.Scene {
         this.gamePause = true;
     }
 
-    startEncounter() {
+    startEncounter(encounterData) {
         "use strict";
         this.pause();
         this.cameras.main.flash(120);
-        this.time.addEvent({delay: 300, callback: this.launchEncounter, callbackScope: this});
+        this.time.addEvent({delay: 300, callback: () => { this.launchEncounter(encounterData); }});
     }
 
-    launchEncounter() {
+    launchEncounter(encounterData) {
         "use strict";
         console.log("starting encounter");
         this.scene.sleep();
-        this.scene.run("EncounterScene", {enemies: [{type: "rat", quantity: 1}]});
+        let enemies = [];
+        enemies.push({type: encounterData.enemyType, quantity: encounterData.enemyQuantity});
+        this.scene.run("EncounterScene", {enemies: enemies});
         this.scene.bringToTop("EncounterScene");
     }
 }
