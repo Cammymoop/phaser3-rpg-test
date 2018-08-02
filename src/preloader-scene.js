@@ -20,7 +20,9 @@ export default class PreloaderScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
-        this.load.image('loader-image', 'src/img/loader.png');
+        this.load.setBaseURL('assets/');
+
+        this.load.image('loader-image', 'img/loader.png');
         this.load.once('filecomplete', this.fullLoad, this);
     }
 
@@ -31,18 +33,18 @@ export default class PreloaderScene extends Phaser.Scene {
         this.cameras.main.centerOn(0, 0);
 
 
-        this.load.spritesheet('tiles', 'src/img/tiles.png', {frameWidth: 16, frameHeight: 16});
-        this.load.image('tiles_img', 'src/img/tiles.png');
-        this.load.spritesheet('player-character', 'src/img/player_character.png', {frameWidth: 16, frameHeight: 16});
-        this.load.spritesheet('rat', 'src/img/rat.png', {frameWidth: 32, frameHeight: 32});
+        this.load.spritesheet('tiles', 'img/tiles.png', {frameWidth: 16, frameHeight: 16});
+        this.load.image('tiles_img', 'img/tiles.png');
+        this.load.spritesheet('player-character', 'img/player_character.png', {frameWidth: 16, frameHeight: 16});
+        this.load.spritesheet('rat', 'img/rat.png', {frameWidth: 32, frameHeight: 32});
 
-        this.load.image('encounter-background', 'src/img/encounter_bg.png');
-        this.load.image('game-over', 'src/img/game-over.png');
-        this.load.image('minus-two', 'src/img/minus-two.png');
-        this.load.image('minus-three', 'src/img/minus-three.png');
-        this.load.image('player-battle-menu', 'src/img/player-battle-menu.png');
-        //this.load.spritesheet('symbols', 'src/img/symbols.png', {frameWidth: 5, frameHeight: 6});
-        this.load.image('symbols', 'src/img/symbols.png');
+        this.load.image('encounter-background', 'img/encounter_bg.png');
+        this.load.image('game-over', 'img/game-over.png');
+        this.load.image('minus-two', 'img/minus-two.png');
+        this.load.image('minus-three', 'img/minus-three.png');
+        this.load.image('player-battle-menu', 'img/player-battle-menu.png');
+        //this.load.spritesheet('symbols', 'img/symbols.png', {frameWidth: 5, frameHeight: 6});
+        this.load.image('symbols', 'img/symbols.png');
 
         // maps
         var mapId = 1;
@@ -50,28 +52,28 @@ export default class PreloaderScene extends Phaser.Scene {
 
         // audio
         this.load.audio('remove', [
-            'src/audio/remove.ogg',
-            'src/audio/remove.mp3'
+            'audio/remove.ogg',
+            'audio/remove.mp3'
         ]);
         this.load.audio('lasor', [
-            'src/audio/lasor.ogg',
-            'src/audio/lasor.mp3'
+            'audio/lasor.ogg',
+            'audio/lasor.mp3'
         ]);
         this.load.audio('shot-hit', [
-            'src/audio/shot-hit.ogg',
-            'src/audio/shot-hit.mp3'
+            'audio/shot-hit.ogg',
+            'audio/shot-hit.mp3'
         ]);
         this.load.audio('shot-hit-break', [
-            'src/audio/shot-hit-break.ogg',
-            'src/audio/shot-hit-break.mp3'
+            'audio/shot-hit-break.ogg',
+            'audio/shot-hit-break.mp3'
         ]);
         this.load.audio('shff', [
-            'src/audio/shff.ogg',
-            'src/audio/shff.mp3'
+            'audio/shff.ogg',
+            'audio/shff.mp3'
         ]);
         this.load.audio('foo', [
-            'src/audio/foo.ogg',
-            'src/audio/foo.mp3'
+            'audio/foo.ogg',
+            'audio/foo.mp3'
         ]);
     }
 

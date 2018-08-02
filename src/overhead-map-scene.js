@@ -3,6 +3,8 @@ import constants from "./constants.js";
 import MapCharacter from "./map-character.js";
 import TileEntity from "./tile-entity.js";
 
+import Character from "./character.js";
+
 import { LoadedMaps } from "./preloader-scene.js";
 
 
@@ -22,9 +24,9 @@ export default class OverheadMapScene extends Phaser.Scene {
             this.data.set('mapId', 1);
         }
 
-        if (!this.registry.has('player-health')) {
-            this.registry.set('player-health', 9000);
-            this.registry.set('player-max-health', 9000);
+        if (!this.registry.has('player-character')) {
+            let pc = new Character(100);
+            this.registry.set('player-character', pc);
         }
 
         if (!this.registry.has('muted')) {

@@ -10,6 +10,7 @@ export default {
         BLACK:     0x000000,
         RED:       0xff004d,
         WHITE:     0xfff1e8,
+        GREEN:     0x00e436,
         DARK_BLUE: 0x1d2b53,
     },
 };

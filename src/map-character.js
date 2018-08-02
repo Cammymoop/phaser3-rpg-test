@@ -4,13 +4,11 @@ import OverheadMapScene from "./overhead-map-scene.js";
 
 export default class MapCharacter extends Phaser.GameObjects.Sprite {
     constructor(scene, spritesheet, x, y) {
-        "use strict";
         super(scene, 0, 0, spritesheet, 0);
         this.create(x, y);
     }
 
     create(tileX, tileY) {
-        "use strict";
         this.depth = 20;
 
         this.isSolid = true;
@@ -42,7 +40,6 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
     }
 
     setState(stateName, data) {
-        "use strict";
         this.state = stateName;
         if (!data) {
             data = {};
@@ -62,7 +59,6 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
         this.onStateChange();
     }
     onStateChange() {
-        "use strict";
         if (this.state === "stationary") {
             var tileHere = this.getTileNextTo(0, 0);
             if (tileHere === 14) {
@@ -78,7 +74,6 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
         }
     }
     update(time, delta) {
-        "use strict";
         if (!this.scene) {
             return; // why is it calling update after it removes the scene while it's restarting?
         }
@@ -107,7 +102,6 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
     // direction = positive or negative
     // axis = walking horizontally (x) or vertically (y)
     startWalk(direction, axis) {
-        "use strict";
         if (this.state !== "stationary") {
             return false;
         }
@@ -122,7 +116,6 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
     // direction = positive or negative
     // axis = walking horizontally (x) or vertically (y)
     canMove(direction, axis) {
-        "use strict";
         if (this.state !== "stationary") {
             return false;
         }
@@ -151,19 +144,15 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
     }
 
     updateTilePosition() {
-        "use strict";
         this.tilePosition = this.scene.getTilePosFromWorldPos(this.x, this.y);
     }
     getCollisionNextTo(xDelta, yDelta, side, type) {
-        "use strict";
         return this.scene.collisionCheckIncludingEntities(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta, side, type);
     }
     getFGTileNextTo(xDelta, yDelta) {
-        "use strict";
         return this.scene.getForegroundTileAt(this.tilePosition.x + xDelta, this.tilePosition.y + yDelta);
     }
     getTileNextTo(xDelta, yDelta) {
-        "use strict";
         if (this.tilePosition.x !== 0 && !this.tilePosition.x) {
             console.log(this.tilePosition);
         }

@@ -1,6 +1,8 @@
 import Phaser from "./phaser-module.js";
 import constants from "./constants.js";
 
+import Character from "./character.js";
+
 export default class EncounterScene extends Phaser.Scene {
     constructor() {
         super({ key: 'EncounterScene' });
@@ -19,11 +21,17 @@ export default class EncounterScene extends Phaser.Scene {
         this.queuedEvents = [];
         this.await = 0;
 
+        this.player = this.registry.get('player-character');
+
         this.menuPositions = [
-            {x: 140, y: 46},
-            {x: 140, y: 56},
-            {x: 140, y: 66},
+            {x: 140, y: 46, text: "ATTACK"},
+            {x: 140, y: 56, text: "MAGIC"},
+            {x: 140, y: 66, text: "RUN"},
         ];
+        this.menuText = [];
+        for (let mi of this.menuPositions) {
+            this.menuText.push(this.makeText(mi.x + 6, mi.y, mi.text));
+        }
         //this.menuCursor = this.add.sprite(this.menuPositions[0].x, this.menuPositions[0].y, 'symbols', 10).setOrigin(0);
         this.menuCursor = this.makeText(this.menuPositions[0].x, this.menuPositions[0].y, '>', 'red');
         this.menuCursor.menuPosition = 0;
@@ -31,7 +39,7 @@ export default class EncounterScene extends Phaser.Scene {
 
         this.playerMenuActive = true;
 
-        this.playerHealthDisplay = this.makeText(164, 30, '');
+        this.playerHealthDisplay = this.makeText(146, 30, 'HP-');
 
         this.enemies = [];
         if (data.hasOwnProperty('enemies')) {
@@ -49,9 +57,9 @@ export default class EncounterScene extends Phaser.Scene {
             }
         }
 
-        this.player = this.add.sprite(180, 118, 'player-character', 1);
-        this.player.setOrigin(1, 1);
-        this.player.depth = 20;
+        this.playerSprite = this.add.sprite(180, 118, 'player-character', 1);
+        this.playerSprite.setOrigin(1, 1);
+        this.playerSprite.depth = 20;
 
         this.input.keyboard.on("keydown_DOWN", function () {
             if (!this.playerMenuActive) {
@@ -101,8 +109,7 @@ export default class EncounterScene extends Phaser.Scene {
     }
 
     update() {
-        let playerHealthString = this.registry.get('player-health') + '';
-        this.playerHealthDisplay.text = this.registry.get('player-health');
+        this.playerHealthDisplay.text = 'HP-' + this.player.getHealth();
 
         while (this.await < 1 && this.queuedEvents.length > 0) {
             if (typeof this.queuedEvents[0] === "function") {
@@ -142,7 +149,6 @@ export default class EncounterScene extends Phaser.Scene {
             updateCrop: function () {
                 // crop off the top ending with no height
                 let height = Math.round(this.target.height - (this.target.height * this.cropProgress));
-                console.log(height);
                 this.target.setCrop(0, this.target.height - height, this.target.width, height);
             },
             target: target,
@@ -174,16 +180,25 @@ export default class EncounterScene extends Phaser.Scene {
 
     makeText(x, y, text, tint) {
         let textObject = this.add.bitmapText(x, y, 'basic-font', text).setOrigin(0).setLetterSpacing(1);
+        textObject.depth = 200;
         if (tint === "red") {
             textObject.setTintFill(constants.colors.RED);
+        } else if (tint === "green") {
+            textObject.setTintFill(constants.colors.GREEN);
         }
         return textObject;
     }
 
     showDamage(target, damage) {
         this.damageAnimation(target);
-        let text = this.makeText(target.getCenter().x, target.getBounds().top - 4, '-' + damage, 'red').setOrigin(0.5, 1);
-        this.time.addEvent({delay: 500, callback: (() => text.destroy()) });
+        let text = this.makeText(target.getCenter().x, target.getBounds().top + 3, '-' + damage, 'red').setOrigin(0.5, 1);
+        this.tweens.add({
+            targets: text,
+            y: text.y - 8, // tween this
+            duration: 500,
+            onComplete: () => { text.destroy(); },
+        });
+        //this.time.addEvent({delay: 500, callback: (() => text.destroy()) });
     }
 
     damageAnimation(target) {
@@ -193,15 +208,22 @@ export default class EncounterScene extends Phaser.Scene {
 
     takeEnemyTurn() {
         this.damagePlayer(3);
-        this.showDamage(this.player, 3);
+        this.showDamage(this.playerSprite, 3);
 
         //this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
         this.queueEvent(() => this.playerTurn());
     }
 
+    setPlayerMenuVisible(visibility) {
+        for (let mt of this.menuText) {
+            mt.visible = visibility;
+        }
+        this.playerMenu.visible = visibility;
+    }
+
     playerTurn() {
-        this.playerMenu.visible = true;
-        if (this.registry.get('player-health') <= 0) {
+        this.setPlayerMenuVisible(true);
+        if (!this.player.isAlive()) {
             return; // show only the menu if you're dead
         }
         this.menuCursor.visible = true;
@@ -213,22 +235,19 @@ export default class EncounterScene extends Phaser.Scene {
 
     endPlayerTurn() {
         this.playerMenuActive = false;
-        this.playerMenu.visible = false;
+        this.setPlayerMenuVisible(false);
         this.menuCursor.visible = false;
 
         this.queueEvent(() => this.time.addEvent({delay: 200, callback: this.takeEnemyTurn, callbackScope: this}));
     }
 
     damagePlayer(damage) {
-        this.registry.set('player-health', this.registry.get('player-health') - damage);
-        if (this.registry.get('player-health') < 0) {
-            this.registry.set('player-health', 0);
-        }
-        if (this.registry.get('player-health') < 1) {
+        this.player.damage(damage);
+        if (!this.player.isAlive()) {
             this.playerMenuActive = false;
             this.time.addEvent({delay: 1000, callback: function () {
-                this.player.y -= this.player.height;
-                this.player.rotation = (3 * Math.PI)/2;
+                this.playerSprite.y -= this.playerSprite.height;
+                this.playerSprite.rotation = (3 * Math.PI)/2;
 
                 this.time.addEvent({delay: 1200, callback: this.gameOver, callbackScope: this});
             }, callbackScope: this});
@@ -239,9 +258,9 @@ export default class EncounterScene extends Phaser.Scene {
         let gameOverSplash = this.add.image(0, 0, 'game-over').setOrigin(0);
         gameOverSplash.depth = 9001;
         this.time.addEvent({delay: 3200, callback: function () {
-            let maxHealth = this.registry.get('player-max-health') + 8;
-            this.registry.set('player-max-health', maxHealth);
-            this.registry.set('player-health', maxHealth);
+            this.player.setMaxHealth(this.player.getMaxHealth() + 8);
+            this.player.revive();
+
             this.scene.stop("OverheadMapScene");
             this.scene.stop();
             this.scene.start("OverheadMapScene");
