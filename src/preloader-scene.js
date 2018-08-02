@@ -75,6 +75,10 @@ export default class PreloaderScene extends Phaser.Scene {
             'audio/foo.ogg',
             'audio/foo.mp3'
         ]);
+
+        // Data
+        this.load.json('item-data', 'data/items.json', 'items');
+        this.load.json('character-data', 'data/characters.json', 'characters');
     }
 
     preloadLevel(mapId, key, file) {

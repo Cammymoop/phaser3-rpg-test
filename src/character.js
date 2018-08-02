@@ -1,14 +1,43 @@
-import Phaser from "./phaser-module.js";
-import constants from "./constants.js";
+import Item from "./item.js";
 
 export default class Character {
-    constructor(maxHealth) {
-        let max = Math.round(maxHealth);
-        this.maxHealth = max;
+    constructor(cache, charId) {
+        this.charId = charId;
+        this.cache = cache;
+
+        let charData = this.cache.json.get('character-data');
+        if (!charData.hasOwnProperty(charId)) {
+            this.data = {};
+        } else {
+            this.data = charData[charId];
+        }
+
+        // set up initial stats
+        this.maxHealth = this.getDataProp('maxHealth', 5);
+        this.baseAttack = this.getDataProp('baseAttack', 1);
+        this.level = this.getDataProp('startingLevel', 1);
+
+        // set health and alive status
         this.revive();
 
-        this.baseAttack = 1;
-        this.level = 1;
+        this.inventory = [];
+        this.equippedItem = null;
+        for (let itemId of this.getDataProp("starting_inventory", [])) {
+            let startingItem = new Item(this.cache, itemId);
+            if (!this.equippedItem && startingItem.equipable) {
+                this.equippedItem = startingItem;
+            }
+            this.inventory.push(startingItem);
+        }
+    }
+    getDataProp(prop, defaultVal) {
+        if (typeof defaultVal === "undefined") {
+            defaultVal = null;
+        }
+        if (this.data.hasOwnProperty(prop)) {
+            return this.data[prop];
+        }
+        return defaultVal;
     }
 
     revive() {
@@ -43,6 +72,10 @@ export default class Character {
 
     // Attack Related Functions
     getStandardAttackDamage() {
-        return this.baseAttack;
+        let damage = this.baseAttack;
+        if (this.equippedItem) {
+            damage += this.equippedItem.getDamageModifier();
+        }
+        return damage;
     }
 }

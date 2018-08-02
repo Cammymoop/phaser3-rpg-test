@@ -25,7 +25,7 @@ export default class OverheadMapScene extends Phaser.Scene {
         }
 
         if (!this.registry.has('player-character')) {
-            let pc = new Character(100);
+            let pc = new Character(this.cache, 'player_a');
             this.registry.set('player-character', pc);
         }
 

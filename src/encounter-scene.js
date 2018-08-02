@@ -91,9 +91,7 @@ export default class EncounterScene extends Phaser.Scene {
                 return;
             }
             if (this.menuCursor.menuPosition === 0) { // ATTACK
-                //this.enemies[0].health -= 2;
-                //this.showDamage(this.enemies[0], 2);
-                this.attackEnemy(this.enemies[0], 2);
+                this.attackEnemy(this.enemies[0], this.player.getStandardAttackDamage());
                 this.endPlayerTurn();
             } else if (this.menuCursor.menuPosition === 1) { // MAGIC
                 this.endPlayerTurn();
@@ -179,6 +177,7 @@ export default class EncounterScene extends Phaser.Scene {
     }
 
     makeText(x, y, text, tint) {
+        text = text.toUpperCase();
         let textObject = this.add.bitmapText(x, y, 'basic-font', text).setOrigin(0).setLetterSpacing(1);
         textObject.depth = 200;
         if (tint === "red") {

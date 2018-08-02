@@ -1,0 +1,14 @@
+{
+    "characters": {
+        "player_a": {
+            "maxHealth": 40
+          , "maxMana": 4
+          , "base_damage": 1
+          , "starting_inventory": [
+                "crappy_sword"
+              , "potion"
+          ]
+        }
+      , "default_rat": {"maxHealth": 10, "base_damage": 3}
+    }
+}
