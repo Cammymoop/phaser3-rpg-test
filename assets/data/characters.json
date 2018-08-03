@@ -2,13 +2,14 @@
     "characters": {
         "player_a": {
             "sprite_key": "player-character"
-          , "maxHealth": 40
+          , "maxHealth": 27
           , "maxMana": 4
           , "base_damage": 1
           , "starting_inventory": [
                 "crappy_sword"
-              , "shiny_sword"
+              , "spear"
               , "potion"
+              , "apple"
           ]
         }
       , "default_rat": {"maxHealth": 10, "base_damage": 2, "sprite_key": "rat"}

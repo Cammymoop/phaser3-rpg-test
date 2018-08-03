@@ -457,7 +457,7 @@ export default class EncounterScene extends Phaser.Scene {
         gameOverSplash.depth = 9001;
         this.time.addEvent({delay: 3200, callback: function () {
             this.cleanup();
-            this.player.setMaxHealth(this.player.getMaxHealth() + 8);
+            this.player.setMaxHealth(this.player.getMaxHealth() + 2);
             this.player.giveInventoryItem('potion');
             this.player.revive();
 
