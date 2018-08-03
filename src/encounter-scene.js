@@ -29,6 +29,7 @@ export default class EncounterScene extends Phaser.Scene {
 
         let menuItems = ["attack", "item", "run"];
         this.actionMenu = new UIVerticalMenu(this, menuX, menuY, menuItems, 15);
+        this.actionMenu.menuType = "action menu";
         this.activeMenu = this.actionMenu;
 
         this.playerMenuActive = true;
@@ -36,6 +37,7 @@ export default class EncounterScene extends Phaser.Scene {
 
         this.playerHealthDisplay = new UIText(this, menuX + 6, menuY - 9, 'HP-', null, 20);
 
+        this.battleSprites = [];
         this.enemies = [];
         if (data.hasOwnProperty('enemies')) {
             for (let enemy of data.enemies) {
@@ -46,80 +48,57 @@ export default class EncounterScene extends Phaser.Scene {
                         spr.setOrigin(0, 1);
                         spr.health = 10;
                         this.enemies.push(spr);
+                        this.battleSprites.push(spr);
                     }
                 }
             }
         }
+        this.defaultEnemyTarget = this.enemies[0];
+
 
         this.playerSprite = this.add.sprite(180, 118, 'player-character', 1);
         this.playerSprite.setOrigin(1, 1);
         this.playerSprite.depth = 20;
+        this.playerSprite.character = this.player;
+
+        this.player.setBattleSprite(this.playerSprite);
+
+        this.battleSprites.push(this.playerSprite);
+        this.battleSprites.sort((a, b) => a.x - b.x);
 
         this.input.keyboard.on("keydown_DOWN", function () {
-            if (!this.activeMenu) {
-                return;
+            if (this.activeMenu) {
+                this.activeMenu.moveCursor("down");
             }
-            this.activeMenu.moveCursor(true);
         }, this);
-
         this.input.keyboard.on("keydown_UP", function () {
-            if (!this.activeMenu) {
-                return;
+            if (this.activeMenu) {
+                this.activeMenu.moveCursor("up");
             }
-            this.activeMenu.moveCursor(false);
+        }, this);
+        this.input.keyboard.on("keydown_LEFT", function () {
+            if (this.activeMenu) {
+                this.activeMenu.moveCursor("left");
+            }
+            if (this.battleCursor) {
+                this.moveBattleCursor("left");
+            }
+        }, this);
+        this.input.keyboard.on("keydown_RIGHT", function () {
+            if (this.activeMenu) {
+                this.activeMenu.moveCursor("right");
+            }
+            if (this.battleCursor) {
+                this.moveBattleCursor("right");
+            }
         }, this);
 
         // select menu option
         this.input.keyboard.on("keydown_SPACE", function () {
-            if (!this.activeMenu) {
-                return;
-            }
-            if (this.activeMenu === this.actionMenu) {
-                if (this.actionMenu.getCursorIndex() === 0) { // ATTACK
-                    this.attackEnemy(this.enemies[0], this.player.getStandardAttackDamage());
-                    this.endPlayerTurn();
-                } else if (this.actionMenu.getCursorIndex() === 1) { // ITEM
-                    this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
-                    this.activeMenu.menuType = "items menu";
-                } else if (this.actionMenu.getCursorIndex() === 2) { // RUN
-                    this.leaveEncounter();
-                }
-            } else if (this.activeMenu.menuType === "items menu") {
-                let itemIndex = this.activeMenu.getCursorIndex();
-                if (this.activeMenu.getMenuItemText(itemIndex).toLowerCase() !== "cancel") {
-                    let item = this.player.getInventoryItem(itemIndex);
-                    let actions = ['drop', 'cancel'];
-                    if (item.usable) {
-                        actions.unshift('use');
-                    }
-                    if (item.equipable) {
-                        actions.unshift((this.player.isEquiped(itemIndex) ? 'un' : '') + 'equip');
-                    }
-                    this.makeSubMenu(actions);
-                    this.activeMenu.menuType = "item use menu";
-                } else {
-                    this.setActiveMenu(this.activeMenu.prevMenu);
-                }
-            } else if (this.activeMenu.menuType === "item use menu") {
-                let action = this.activeMenu.getMenuItemText(this.activeMenu.getCursorIndex()).toLowerCase();
-                this.setActiveMenu(this.activeMenu.prevMenu); // return to item list menu
-                let itemIndex = this.activeMenu.getCursorIndex();
-                let modified = false;
-                if (action === 'equip' || action === 'unequip') {
-                    this.player.toggleEquipItem(itemIndex);
-                    modified = true;
-                } else if (action === 'drop') {
-                    this.player.dropInventoryItem(itemIndex);
-                    modified = true;
-                }
-                if (modified) {
-                    // regenerate item list menu
-                    this.setActiveMenu(this.activeMenu.prevMenu);
-                    this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
-                    this.activeMenu.menuType = "items menu";
-                }
-            } else if (this.activeMenu.temporary) {
-                this.setActiveMenu(this.activeMenu.prevMenu);
+            if (this.battleCursor) {
+                this.selectBattleCursor();
+            } else if (this.activeMenu) {
+                this.selectMenuItem();
             }
         }, this);
 
@@ -149,6 +128,55 @@ export default class EncounterScene extends Phaser.Scene {
             }
             this.queuedEvents.shift();
         }
+    }
+
+    makeBattleCursor(target, callback, targetList) {
+        if (typeof targetList === "undefined") {
+            targetList = this.battleSprites;
+        }
+        if (!targetList.includes(target)) {
+            console.log('invalid battle cursor target.');
+            return;
+        }
+        this.battleCursor = this.add.sprite(0, 0, 'battle-cursor');
+        this.battleCursor.depth = 80;
+        this.battleCursor.targetList = targetList;
+        this.battleCursor.targetIndex = targetList.indexOf(target);
+        this.battleCursor.target = target;
+        this.updateBattleCursorPosition();
+
+        this.hideMenuStack();
+        this.battleCursor.callback = (target) => { 
+            this.showMenuStack();
+            this.battleCursor.destroy();
+            this.battleCursor = false;
+            callback(target); 
+        };
+    }
+
+    moveBattleCursor(direction) {
+        if (direction !== "left" && direction !== "right") {
+            return;
+        }
+        let delta = direction === "right" ? 1 : -1;
+        this.battleCursor.targetIndex += delta;
+        let lastIndex = this.battleCursor.targetList.length - 1;
+        if (this.battleCursor.targetIndex < 0) {
+            this.battleCursor.targetIndex = lastIndex;
+        } else if (this.battleCursor.targetIndex > lastIndex) {
+            this.battleCursor.targetIndex = 0;
+        }
+        this.battleCursor.target = this.battleCursor.targetList[this.battleCursor.targetIndex];
+        this.updateBattleCursorPosition();
+    }
+
+    updateBattleCursorPosition() {
+        this.battleCursor.x = this.battleCursor.target.getCenter().x;
+        this.battleCursor.y = this.battleCursor.target.getBounds().top - 8;
+    }
+
+    selectBattleCursor() {
+        this.battleCursor.callback(this.battleCursor.target);
     }
 
     addBlockingEvent(delay, callback) {
@@ -201,6 +229,10 @@ export default class EncounterScene extends Phaser.Scene {
         if (this.enemies.length <= 0) {
             console.log('Encoutner Won');
             this.addBlockingEvent(2500, () => this.leaveEncounter());
+            return;
+        }
+        if (this.defaultEnemyTarget === target) {
+            this.defaultEnemyTarget = this.enemies[0];
         }
     }
 
@@ -208,8 +240,21 @@ export default class EncounterScene extends Phaser.Scene {
         this.queuedEvents.push(callback);
     }
 
+
+    showHeal(target, hp) {
+        this.quickFlash(target, constants.colors.GREEN);
+        let text = new UIText(this, target.getCenter().x, target.getBounds().top + 3, '+' + hp, 'green').setOrigin(0.5, 1);
+        this.tweens.add({
+            targets: text,
+            y: text.y - 8, // tween this
+            duration: 500,
+            onComplete: () => { text.destroy(); },
+        });
+        this.addBlockingEvent(250, () => {});
+    }
+
     showDamage(target, damage) {
-        this.damageAnimation(target);
+        this.quickFlash(target);
         let text = new UIText(this, target.getCenter().x, target.getBounds().top + 3, '-' + damage, 'red').setOrigin(0.5, 1);
         this.tweens.add({
             targets: text,
@@ -217,12 +262,15 @@ export default class EncounterScene extends Phaser.Scene {
             duration: 500,
             onComplete: () => { text.destroy(); },
         });
-        //this.time.addEvent({delay: 500, callback: (() => text.destroy()) });
+        this.addBlockingEvent(250, () => {});
     }
 
-    damageAnimation(target) {
-        target.setTintFill(constants.colors.WHITE);
-        this.time.addEvent({delay: 70, callback: (() => target.clearTint()) });
+    quickFlash(target, color) {
+        if (typeof color === "undefined") {
+            color = constants.colors.WHITE;
+        }
+        target.setTintFill(color);
+        this.time.addEvent({delay: 90, callback: (() => target.clearTint()) });
     }
 
     takeEnemyTurn() {
@@ -231,6 +279,67 @@ export default class EncounterScene extends Phaser.Scene {
 
         //this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
         this.queueEvent(() => this.playerTurn());
+    }
+
+    selectMenuItem() {
+        if (!this.activeMenu) {
+            return;
+        }
+        if (this.activeMenu === this.actionMenu) {
+            if (this.actionMenu.getCursorIndex() === 0) { // ATTACK
+                this.makeBattleCursor(this.defaultEnemyTarget, (target) => {
+                    this.defaultEnemyTarget = target;
+                    this.attackEnemy(target, this.player.getStandardAttackDamage());
+                    this.queueEvent(this.endPlayerTurn());
+                }, this.enemies);
+            } else if (this.actionMenu.getCursorIndex() === 1) { // ITEM
+                this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
+                this.activeMenu.menuType = "items menu";
+            } else if (this.actionMenu.getCursorIndex() === 2) { // RUN
+                this.leaveEncounter();
+            }
+        } else if (this.activeMenu.menuType === "items menu") {
+            let itemIndex = this.activeMenu.getCursorIndex();
+            if (this.activeMenu.getMenuItemText(itemIndex).toLowerCase() !== "cancel") {
+                let item = this.player.getInventoryItem(itemIndex);
+                let actions = ['drop', 'cancel'];
+                if (item.usable) {
+                    actions.unshift('use');
+                }
+                if (item.equipable) {
+                    actions.unshift((this.player.isEquiped(itemIndex) ? 'un' : '') + 'equip');
+                }
+                this.makeSubMenu(actions);
+                this.activeMenu.menuType = "item use menu";
+            } else {
+                this.setActiveMenu(this.activeMenu.prevMenu);
+            }
+        } else if (this.activeMenu.menuType === "item use menu") {
+            let action = this.activeMenu.getMenuItemText(this.activeMenu.getCursorIndex()).toLowerCase();
+            this.setActiveMenu(this.activeMenu.prevMenu); // return to item list menu
+            let itemIndex = this.activeMenu.getCursorIndex();
+            let modified = false;
+            if (action === 'equip' || action === 'unequip') {
+                this.player.toggleEquipItem(itemIndex);
+                modified = true;
+            } else if (action === 'drop') {
+                this.player.dropInventoryItem(itemIndex);
+                modified = true;
+            } else if (action === 'use') {
+                this.makeBattleCursor(this.playerSprite, (target) => {
+                    this.player.useInventoryItem(itemIndex, target);
+                    this.queueEvent(this.endPlayerTurn());
+                });
+            }
+            if (modified) {
+                // regenerate item list menu
+                this.setActiveMenu(this.activeMenu.prevMenu);
+                this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
+                this.activeMenu.menuType = "items menu";
+            }
+        } else if (this.activeMenu.temporary) {
+            this.setActiveMenu(this.activeMenu.prevMenu);
+        }
     }
 
     setActiveMenu(menu, leaveOpen) {
@@ -249,6 +358,27 @@ export default class EncounterScene extends Phaser.Scene {
 
     closeSubMenu() {
         this.setActiveMenu(this.activeMenu.prevMenu);
+    }
+
+    dismisMenuStack() {
+        while (this.activeMenu) {
+            this.closeSubMenu(this.activeMenu.prevMenu || false);
+        }
+    }
+
+    menuStackVisibility(vis) {
+        let menu = this.activeMenu;
+        while (menu) {
+            console.log(menu.menuType);
+            menu.setVisible(vis);
+            menu = menu.prevMenu;
+        }
+    }
+    showMenuStack() {
+        this.menuStackVisibility(true);
+    }
+    hideMenuStack() {
+        this.menuStackVisibility(false);
     }
 
     makeSubMenu(list) {
@@ -276,7 +406,7 @@ export default class EncounterScene extends Phaser.Scene {
     }
 
     endPlayerTurn() {
-        this.setActiveMenu(false);
+        this.dismisMenuStack();
         this.actionMenu.setVisible(false);
 
         this.queueEvent(() => this.time.addEvent({delay: 200, callback: this.takeEnemyTurn, callbackScope: this}));
@@ -296,11 +426,17 @@ export default class EncounterScene extends Phaser.Scene {
         }
     }
 
+    cleanup() {
+        this.player.cleanupBattleData();
+    }
+
     gameOver() {
         let gameOverSplash = this.add.image(0, 0, 'game-over').setOrigin(0);
         gameOverSplash.depth = 9001;
         this.time.addEvent({delay: 3200, callback: function () {
+            this.cleanup();
             this.player.setMaxHealth(this.player.getMaxHealth() + 8);
+            this.player.giveInventoryItem('potion');
             this.player.revive();
 
             this.scene.stop("OverheadMapScene");
@@ -311,6 +447,7 @@ export default class EncounterScene extends Phaser.Scene {
 
     leaveEncounter() {
         console.log("encounter finished");
+        this.cleanup();
         this.scene.stop();
         this.scene.get("OverheadMapScene").resume();
     }

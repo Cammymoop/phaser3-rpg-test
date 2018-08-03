@@ -40,11 +40,12 @@ export default class PreloaderScene extends Phaser.Scene {
 
         this.load.image('encounter-background', 'img/encounter_bg.png');
         this.load.image('game-over', 'img/game-over.png');
-        this.load.image('minus-two', 'img/minus-two.png');
-        this.load.image('minus-three', 'img/minus-three.png');
-        this.load.image('player-battle-menu', 'img/player-battle-menu.png');
-        //this.load.spritesheet('symbols', 'img/symbols.png', {frameWidth: 5, frameHeight: 6});
+        //this.load.image('minus-two', 'img/minus-two.png');
+        //this.load.image('minus-three', 'img/minus-three.png');
+        //this.load.image('player-battle-menu', 'img/player-battle-menu.png');
         this.load.image('symbols', 'img/symbols.png');
+
+        this.load.image('battle-cursor', 'img/battle_sprite_cursor.png');
 
         // drawing to render textures
         this.load.image('single-pixel', 'img/single_pixel.png');

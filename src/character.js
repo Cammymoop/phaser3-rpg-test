@@ -29,6 +29,8 @@ export default class Character {
             }
             this.inventory.push(startingItem);
         }
+
+        this.battleSprite = false;
     }
     getDataProp(prop, defaultVal) {
         if (typeof defaultVal === "undefined") {
@@ -38,6 +40,13 @@ export default class Character {
             return this.data[prop];
         }
         return defaultVal;
+    }
+
+    setBattleSprite(sprite) {
+        this.battleSprite = sprite;
+    }
+    cleanupBattleData() {
+        this.battleSprite = false;
     }
 
     revive() {
@@ -68,6 +77,10 @@ export default class Character {
     }
     heal(heal) {
         this.health = Math.min(this.maxHealth, this.health + Math.round(heal));
+
+        if (this.battleSprite) {
+            this.battleSprite.scene.showHeal(this.battleSprite, heal);
+        }
     }
 
     // Attack Related Functions
@@ -89,6 +102,21 @@ export default class Character {
             return false;
         }
         return this.inventory[index];
+    }
+
+    giveInventoryItem(itemId) {
+        this.inventory.push(new Item(this.cache, itemId));
+    }
+
+    useInventoryItem(index, target) {
+        let item = this.getInventoryItem(index);
+        if (target.character) {
+            target = target.character;
+        }
+        item.useOn(target);
+        if (item.consumable) {
+            this.dropInventoryItem(index);
+        }
     }
 
     dropInventoryItem(index) {

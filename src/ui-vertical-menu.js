@@ -69,8 +69,11 @@ export default class UIVerticalMenu {
     hideCursor() {
         this.cursor.visible = false;
     }
-    moveCursor(forward) {
-        this.cursorIndex += forward ? 1 : -1;
+    moveCursor(direction) {
+        if (direction !== "down" && direction !== "up") {
+            return;
+        }
+        this.cursorIndex += direction === "down" ? 1 : -1;
         if (this.cursorIndex < 0) {
             this.cursorIndex = this.maxIndex;
         } else if (this.cursorIndex > this.maxIndex) {

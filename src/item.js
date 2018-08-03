@@ -15,6 +15,7 @@ export default class Item {
         this.displayName = this.getDataProp("display_name", "mystery item");
         this.equipable = this.getDataProp("equipable", false);
         this.usable = this.getDataProp("usable", false);
+        this.consumable = this.getDataProp("consumable", this.usable);
 
         this.damageModifier = this.getDataProp("damage_modifier", 0);
     }
