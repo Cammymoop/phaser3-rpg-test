@@ -251,6 +251,7 @@ export default class EncounterScene extends Phaser.Scene {
         target.destroy();
         if (this.enemies.length <= 0) {
             console.log('Encoutner Won');
+            this.scene.get("OverheadMapScene").removeEncounter();
             this.addBlockingEvent(1800, () => this.leaveEncounter());
             return;
         }

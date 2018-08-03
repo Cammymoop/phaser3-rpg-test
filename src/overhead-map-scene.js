@@ -11,12 +11,10 @@ import { LoadedMaps } from "./preloader-scene.js";
 export default class OverheadMapScene extends Phaser.Scene {
 
     constructor() {
-        "use strict";
         super({ key: 'OverheadMapScene' });
     }
 
     create(data) {
-        "use strict";
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
@@ -157,7 +155,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        "use strict";
         if (!this.levelLoaded || this.gamePause) {
             return;
         }
@@ -178,7 +175,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     getForegroundTileAt(tileX, tileY) {
-        "use strict";
         if (!this.foregroundLayer || tileX < 0 || tileX >= this.map.width || tileY < 0 || tileY >= this.map.height) {
             return -1;
         }
@@ -186,7 +182,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     getCollisionTileAt(tileX, tileY) {
-        "use strict";
         if (tileX < 0 || tileX >= this.map.width || tileY < 0 || tileY >= this.map.height) {
             return -1;
         }
@@ -198,7 +193,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     collisionCheckIncludingEntities(tileX, tileY, side, collisionType) {
-        "use strict";
         var collidable = {};
         var someCollision = false;
         collidable.entities = this.tileEntities.filter(function (te) {
@@ -219,7 +213,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     setCollisionTile(tileX, tileY, newTileIndex) {
-        "use strict";
         if (newTileIndex === null) {
             this.collisionLayer.removeTileAt(tileX, tileY);
         } else {
@@ -228,7 +221,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     setForegroundTile(tileX, tileY, newTileIndex) {
-        "use strict";
         if (newTileIndex === null) {
             this.foregroundLayer.removeTileAt(tileX, tileY);
         } else {
@@ -237,14 +229,12 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     getTilePosFromWorldPos(worldX, worldY) {
-        "use strict";
         return new Phaser.Geom.Point(Math.floor(worldX/constants.TILE_SIZE), Math.floor(worldY/constants.TILE_SIZE));
     }
 
     // Do you collide with this tile?
     tileIsSolid(tileIndex, side, collisionType) {
-        "use strict";
-        var solidTiles = [5, 7, 9, 10, 13, 14, 15, 17, 31];
+        var solidTiles = [5, 7, 9, 10, 11, 13, 14, 15, 17, 31];
         if (side === constants.TOP_SIDE) {
             //solidTiles.push(13);
         } else if (side === constants.BOTTOM_SIDE) {
@@ -257,7 +247,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     fixBrokenKeyState() {
-        "use strict";
         for (let key of this.input.keyboard.keys) {
             if (key && key.isDown) {
                 key.reset();
@@ -266,7 +255,6 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     resume() {
-        "use strict";
         this.scene.wake();
         this.scene.bringToTop();
         this.fixBrokenKeyState();
@@ -274,24 +262,29 @@ export default class OverheadMapScene extends Phaser.Scene {
     }
 
     pause() {
-        "use strict";
         this.gamePause = true;
     }
 
-    startEncounter(encounterData) {
-        "use strict";
+    startEncounter(encounterKey) {
         this.pause();
         this.cameras.main.flash(120);
+        this.currentEncounter = encounterKey;
+        let encounterData = this.staticEncounters.get(encounterKey);
         this.time.addEvent({delay: 300, callback: () => { this.launchEncounter(encounterData); }});
     }
 
     launchEncounter(encounterData) {
-        "use strict";
-        console.log("starting encounter");
         this.scene.sleep();
         let enemies = [];
         enemies.push({type: encounterData.enemyType, quantity: encounterData.enemyQuantity});
         this.scene.run("EncounterScene", {enemies: enemies});
         this.scene.bringToTop("EncounterScene");
+    }
+
+    removeEncounter() {
+        if (this.currentEncounter) {
+            this.staticEncounters.delete(this.currentEncounter);
+            this.currentEncounter = false;
+        }
     }
 }

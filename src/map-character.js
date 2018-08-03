@@ -66,8 +66,7 @@ export default class MapCharacter extends Phaser.GameObjects.Sprite {
             }
             let key = OverheadMapScene.coordinateKey(this.tilePosition);
             if (this.scene.staticEncounters.has(key)) {
-                this.scene.startEncounter(this.scene.staticEncounters.get(key));
-                console.log(this.scene.staticEncounters.get(key));
+                this.scene.startEncounter(key);
             }
         } else if (this.state === "walking") {
             this.faceDirection(this.stateData.walkDir, this.stateData.walkAxis);
