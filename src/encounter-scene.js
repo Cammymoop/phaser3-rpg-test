@@ -16,6 +16,8 @@ export default class EncounterScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#00000');
         this.cameras.main.zoom = 6;
 
+        this.ATTACK_OFFSET = 14;
+
         this.background = this.add.image(0, 0, 'encounter-background').setOrigin(0);
         this.cameras.main.centerOn(this.background.getCenter().x, this.background.getCenter().y);
 
@@ -39,17 +41,25 @@ export default class EncounterScene extends Phaser.Scene {
 
         this.battleSprites = [];
         this.enemies = [];
+        let charData = this.cache.json.get('character-data');
+        let currIndex = 0;
         if (data.hasOwnProperty('enemies')) {
             for (let enemy of data.enemies) {
-                if (enemy.type === "rat") {
-                    for (let i = 0; i < enemy.quantity; i++) {
-                        var spr = this.add.sprite(12 + (i * 22), 118 - (i * 6), 'rat', 0);
-                        spr.depth = 20 - i;
-                        spr.setOrigin(0, 1);
-                        spr.health = 10;
-                        this.enemies.push(spr);
-                        this.battleSprites.push(spr);
-                    }
+                if (!charData.hasOwnProperty(enemy.type)) {
+                    console.log("character entry for: " + enemy.type + " not found");
+                    continue;
+                }
+                for (let i = 0; i < enemy.quantity; i++) {
+                    let enemyChar = new Character(this.cache, enemy.type); 
+                    let enemySprite = this.add.sprite(12 + (currIndex * 22), 118 - (currIndex * 6), enemyChar.spriteKey, 0);
+                    enemyChar.setBattleSprite(enemySprite);
+                    enemySprite.character = enemyChar;
+                    enemySprite.depth = 14 - currIndex;
+                    enemySprite.setOrigin(0, 1);
+                    //enemySprite.health = 10;
+                    this.enemies.push(enemySprite);
+                    this.battleSprites.push(enemySprite);
+                    currIndex++;
                 }
             }
         }
@@ -128,6 +138,26 @@ export default class EncounterScene extends Phaser.Scene {
             }
             this.queuedEvents.shift();
         }
+
+        if (!this.player.isAlive()) {
+            this.hideMenuStack();
+            this.playerHealthDisplay.visible = false;
+            this.addBLockingEvent(1000, () => {
+                this.playerSprite.y -= this.playerSprite.height - 4;
+                this.playerSprite.x -= 3;
+                this.playerSprite.rotation = (3 * Math.PI)/2;
+                this.playerSprite.setFrame(3);
+
+                this.addBlockingEvent(1200, () => this.gameOver());
+            });
+        }
+        let killEnemy = (enemy) => this.addBlockingEvent(600, () => this.enemyDeath(enemy));
+        for (let enemy of this.enemies) {
+            if (!enemy.dying && !enemy.character.isAlive()) {
+                enemy.dying = true;
+                killEnemy(enemy);
+            }
+        }
     }
 
     makeBattleCursor(target, callback, targetList) {
@@ -150,7 +180,7 @@ export default class EncounterScene extends Phaser.Scene {
             this.showMenuStack();
             this.battleCursor.destroy();
             this.battleCursor = false;
-            callback(target); 
+            callback(target.character); 
         };
     }
 
@@ -188,15 +218,6 @@ export default class EncounterScene extends Phaser.Scene {
         this.time.addEvent({delay: delay, callback: () => { callback.call(); this.await--; }});
     }
 
-    attackEnemy(target, damage) {
-        target.health -= damage;
-        this.showDamage(target, damage);
-        if (target.health <= 0) {
-            target.health = 0;
-            this.addBlockingEvent(600, () => this.enemyDeath(target));
-        }
-    }
-
     enemyDeath(target) {
         target.setTintFill(constants.colors.DARK_BLUE);
         this.await++;
@@ -224,11 +245,13 @@ export default class EncounterScene extends Phaser.Scene {
         this.enemies = this.enemies.filter(function (en) {
             return en !== target;
         });
+        this.battleSprites = this.battleSprites.filter(function (en) {
+            return en !== target;
+        });
         target.destroy();
-        console.log(this.enemies.length + ' enemies left');
         if (this.enemies.length <= 0) {
             console.log('Encoutner Won');
-            this.addBlockingEvent(2500, () => this.leaveEncounter());
+            this.addBlockingEvent(1800, () => this.leaveEncounter());
             return;
         }
         if (this.defaultEnemyTarget === target) {
@@ -274,10 +297,12 @@ export default class EncounterScene extends Phaser.Scene {
     }
 
     takeEnemyTurn() {
-        this.damagePlayer(3);
-        this.showDamage(this.playerSprite, 3);
+        let actualAttack = (a, b) => { a.character.standardAttack(b); a.x -= this.ATTACK_OFFSET; this.addBlockingEvent(400, () => {}); };
+        let queueAttack = (attacker, attackee) => this.queueEvent(() => { attacker.x += this.ATTACK_OFFSET; this.addBlockingEvent(600, () => actualAttack(attacker, attackee)); });
+        for (let enemy of this.enemies) {
+            queueAttack(enemy, this.player);
+        }
 
-        //this.time.addEvent({delay: 200, callback: this.playerTurn, callbackScope: this });
         this.queueEvent(() => this.playerTurn());
     }
 
@@ -288,9 +313,10 @@ export default class EncounterScene extends Phaser.Scene {
         if (this.activeMenu === this.actionMenu) {
             if (this.actionMenu.getCursorIndex() === 0) { // ATTACK
                 this.makeBattleCursor(this.defaultEnemyTarget, (target) => {
-                    this.defaultEnemyTarget = target;
-                    this.attackEnemy(target, this.player.getStandardAttackDamage());
-                    this.queueEvent(this.endPlayerTurn());
+                    this.defaultEnemyTarget = target.getBattleSprite();
+                    this.playerSprite.x -= this.ATTACK_OFFSET;
+                    this.addBlockingEvent(400, () => { this.player.standardAttack(target); this.playerSprite.x += this.ATTACK_OFFSET; });
+                    this.endPlayerTurn();
                 }, this.enemies);
             } else if (this.actionMenu.getCursorIndex() === 1) { // ITEM
                 this.makeSubMenu(this.player.getInventoryList().concat(['cancel']));
@@ -328,7 +354,7 @@ export default class EncounterScene extends Phaser.Scene {
             } else if (action === 'use') {
                 this.makeBattleCursor(this.playerSprite, (target) => {
                     this.player.useInventoryItem(itemIndex, target);
-                    this.queueEvent(this.endPlayerTurn());
+                    this.endPlayerTurn();
                 });
             }
             if (modified) {
@@ -369,7 +395,6 @@ export default class EncounterScene extends Phaser.Scene {
     menuStackVisibility(vis) {
         let menu = this.activeMenu;
         while (menu) {
-            console.log(menu.menuType);
             menu.setVisible(vis);
             menu = menu.prevMenu;
         }
@@ -396,6 +421,16 @@ export default class EncounterScene extends Phaser.Scene {
     }
 
     playerTurn() {
+        console.log('player turn');
+        let enemiesLeft = false;
+        for (let enemy of this.enemies) {
+            if (!enemy.dying) {
+                enemiesLeft = true;
+            }
+        }
+        if (!enemiesLeft) {
+            return;
+        }
         this.actionMenu.setVisible(true);
         if (!this.player.isAlive()) {
             this.actionMenu.hideCursor();
@@ -410,20 +445,6 @@ export default class EncounterScene extends Phaser.Scene {
         this.actionMenu.setVisible(false);
 
         this.queueEvent(() => this.time.addEvent({delay: 200, callback: this.takeEnemyTurn, callbackScope: this}));
-    }
-
-    damagePlayer(damage) {
-        this.player.damage(damage);
-        if (!this.player.isAlive()) {
-            this.time.addEvent({delay: 1000, callback: function () {
-                this.playerSprite.y -= this.playerSprite.height - 4;
-                this.playerSprite.x -= 3;
-                this.playerSprite.rotation = (3 * Math.PI)/2;
-                this.playerSprite.setFrame(3);
-
-                this.time.addEvent({delay: 1200, callback: this.gameOver, callbackScope: this});
-            }, callbackScope: this});
-        }
     }
 
     cleanup() {

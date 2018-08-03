@@ -24,7 +24,7 @@
                  "properties":
                     {
                      "enemy-quantity":1,
-                     "enemy-type":"rat"
+                     "enemy-type":"default_rat"
                     },
                  "propertytypes":
                     {
@@ -46,7 +46,7 @@
                  "properties":
                     {
                      "enemy-quantity":3,
-                     "enemy-type":"rat"
+                     "enemy-type":"default_rat"
                     },
                  "propertytypes":
                     {

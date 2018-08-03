@@ -30,6 +30,7 @@ export default class Character {
             this.inventory.push(startingItem);
         }
 
+        this.spriteKey = this.getDataProp('sprite_key', 'rat');
         this.battleSprite = false;
     }
     getDataProp(prop, defaultVal) {
@@ -44,6 +45,9 @@ export default class Character {
 
     setBattleSprite(sprite) {
         this.battleSprite = sprite;
+    }
+    getBattleSprite(sprite) {
+        return this.battleSprite;
     }
     cleanupBattleData() {
         this.battleSprite = false;
@@ -74,6 +78,10 @@ export default class Character {
         if (this.health === 0) {
             this.alive = false;
         }
+
+        if (this.battleSprite) {
+            this.battleSprite.scene.showDamage(this.battleSprite, damage);
+        }
     }
     heal(heal) {
         this.health = Math.min(this.maxHealth, this.health + Math.round(heal));
@@ -84,6 +92,10 @@ export default class Character {
     }
 
     // Attack Related Functions
+    standardAttack(target) {
+        let damage = this.getStandardAttackDamage();
+        target.damage(damage);
+    }
     getStandardAttackDamage() {
         let damage = this.baseAttack;
         if (this.equippedItem) {
@@ -110,9 +122,6 @@ export default class Character {
 
     useInventoryItem(index, target) {
         let item = this.getInventoryItem(index);
-        if (target.character) {
-            target = target.character;
-        }
         item.useOn(target);
         if (item.consumable) {
             this.dropInventoryItem(index);

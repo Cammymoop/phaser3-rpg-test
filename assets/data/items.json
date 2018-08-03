@@ -1,8 +1,10 @@
 {
     "items": {
         "crappy_sword": {"display_name": "rusted sword", "equipable": true, "damage_modifier": 2}
+      , "spear": {"display_name": "spear", "equipable": true, "damage_modifier": 3}
       , "shiny_sword": {"display_name": "shiny sword", "equipable": true, "damage_modifier": 5}
 
       , "potion": {"display_name": "red potion", "equipable": false, "usable": true, "heals": 10}
+      , "apple": {"display_name": "apple", "equipable": false, "usable": true, "heals": 6}
     }
 }
